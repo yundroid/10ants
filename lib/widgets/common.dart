@@ -162,7 +162,7 @@ class SectionTitle extends StatelessWidget {
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.w800)),
           ),
-          ?trailing,
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ]),
       );
 }

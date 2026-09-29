@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
+import '../services/contact.dart';
 import '../services/data_store.dart';
 import '../services/rent_calculator.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
+import '../widgets/contact_buttons.dart';
 import 'tenants_screen.dart';
 
 /// Gecikmiş kiraların kiracı bazında gruplanmış listesi.
@@ -50,12 +52,23 @@ class OverdueScreen extends StatelessWidget {
                 Card(
                   child: Column(children: [
                     for (final p in g.value) RentPeriodTile(period: p),
-                    if (g.key.phone.isNotEmpty)
-                      ListTile(
-                        leading: const Icon(Icons.phone_outlined),
-                        title: Text(g.key.phone),
-                        subtitle: const Text('Hatırlatmak için ara'),
+                    const Divider(height: 1),
+                    if (g.key.phone.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                        child: Row(children: [
+                          Icon(Icons.phone_outlined,
+                              size: 16, color: Theme.of(context).colorScheme.outline),
+                          const SizedBox(width: 6),
+                          Text(g.key.phone, style: Theme.of(context).textTheme.bodySmall),
+                        ]),
                       ),
+                    ContactButtons(
+                      tenant: g.key,
+                      message: Contact.reminderMessage(
+                          g.key, store.propertyById(g.key.propertyId), g.value),
+                      onAddPhone: () => openTenantForm(context, tenant: g.key),
+                    ),
                   ]),
                 ),
               ],

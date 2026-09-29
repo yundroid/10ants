@@ -26,7 +26,7 @@ Ev ve daire sahiplerinin mülklerini, kiracılarını, gelir-giderlerini ve geci
 - Durumlar: *Ödendi*, *Kısmi ödendi*, *Bekleniyor*, *Gecikmiş* (kaç gün geciktiği ile)
 - Kısmi ödemeler; peşin ödeme (gelecek ay)
 - Ödeme günü ayın gün sayısını aşarsa (ör. 31) ayın son günü kullanılır
-- **Geciken kiralar** ekranı: kiracı bazında gruplanmış toplam alacak
+- **Geciken kiralar** ekranı: kiracı bazında gruplanmış toplam alacak; her kiracı için **Ara** ve **WhatsApp** düğmeleri. WhatsApp, geciken dönemleri ve toplam tutarı içeren hazır bir hatırlatma mesajıyla açılır (göndermeden önce düzenlenebilir)
 
 **Gelir & gider** — kira, depozito, aidat, tamir-bakım, emlak vergisi, DASK-sigorta, fatura, kredi taksiti vb. Ay/mülk/tür filtresi. Mülkten bağımsız "genel" giderler.
 

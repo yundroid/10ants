@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/models.dart';
+import '../services/contact.dart';
 import '../services/data_store.dart';
 import '../services/rent_calculator.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/attachments.dart';
 import '../widgets/common.dart';
+import '../widgets/contact_buttons.dart';
 import 'home_shell.dart';
 import 'properties_screen.dart';
 
@@ -278,6 +280,20 @@ class TenantDetailScreen extends StatelessWidget {
               if (t.email.isNotEmpty) _InfoRow(Icons.email_outlined, 'E-posta', t.email),
               if (t.notes.isNotEmpty) _InfoRow(Icons.notes, 'Not', t.notes),
             ]),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: ContactButtons(
+              tenant: t,
+              message: debt > 0
+                  ? Contact.reminderMessage(t, property,
+                      ledger.where((p) => p.status == RentStatus.overdue).toList())
+                  : 'Merhaba ${t.name.split(' ').first}, ',
+              onAddPhone: () => openTenantForm(context, tenant: t),
+            ),
           ),
         ),
         const SizedBox(height: 8),
