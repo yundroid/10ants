@@ -72,7 +72,7 @@ void main() {
     // Özet: 1 mülk, 1 aktif kiracı, beklenen kira
     await tester.tap(find.text('Özet'));
     await settle();
-    expect(find.text('Beklenen kira'), findsOneWidget);
+    expect(find.text('BEKLENEN KİRA'), findsOneWidget);
     expect(find.textContaining('12.500,00'), findsWidgets);
 
     // Şifre değiştir ekranına gidilebiliyor

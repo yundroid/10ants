@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sembast/sembast.dart';
 
+import '../data/attachment_storage.dart';
 import '../data/stores.dart';
 import '../models/models.dart';
 import 'password_hasher.dart';
@@ -17,10 +18,13 @@ class AuthException implements Exception {
 /// Hesaplar cihazdaki veritabanında tutulur; şifreler asla düz metin olarak
 /// saklanmaz.
 class AuthService extends ChangeNotifier {
-  AuthService(this._db, {PasswordHasher? hasher})
+  AuthService(this._db, {PasswordHasher? hasher, this.files})
       : _hasher = hasher ?? PasswordHasher();
 
   final Database _db;
+
+  /// Hesap silinirken eklerin dosyalarını da silmek için.
+  final AttachmentStorage? files;
   final PasswordHasher _hasher;
 
   static const minPasswordLength = 6;
@@ -179,12 +183,18 @@ class AuthService extends ChangeNotifier {
       throw AuthException('Şifre hatalı');
     }
     final byUser = Finder(filter: Filter.equals('userId', user.id));
-    await _db.transaction((txn) async {
+    final attachmentIds = await _db.transaction((txn) async {
+      final ids = [
+        for (final r in await Stores.transactions.find(txn, finder: byUser))
+          for (final a in Txn.fromMap(r.key, r.value).attachments) a.id,
+      ];
       await Stores.transactions.delete(txn, finder: byUser);
       await Stores.tenants.delete(txn, finder: byUser);
       await Stores.properties.delete(txn, finder: byUser);
       await Stores.users.record(user.id).delete(txn);
+      return ids;
     });
+    await files?.deleteAll(attachmentIds);
     await logout();
   }
 

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:sembast/sembast.dart';
 
+import 'data/attachment_storage.dart';
 import 'data/db_opener.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home_shell.dart';
@@ -17,22 +18,24 @@ Future<void> main() async {
   Intl.defaultLocale = 'tr_TR';
   await initializeDateFormatting('tr_TR');
   final db = await openAppDatabase();
-  final auth = AuthService(db);
+  final files = await openAttachmentStorage();
+  final auth = AuthService(db, files: files);
   await auth.restoreSession();
-  runApp(TenAntsApp(db: db, auth: auth));
+  runApp(TenAntsApp(db: db, auth: auth, files: files));
 }
 
 class TenAntsApp extends StatelessWidget {
-  const TenAntsApp({super.key, required this.db, required this.auth});
+  const TenAntsApp({super.key, required this.db, required this.auth, this.files});
   final Database db;
   final AuthService auth;
+  final AttachmentStorage? files;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: auth),
-        ChangeNotifierProvider(create: (_) => DataStore(db, auth)),
+        ChangeNotifierProvider(create: (_) => DataStore(db, auth, files: files)),
       ],
       child: MaterialApp(
         title: '10ants',

@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:typed_data';
+
 import 'package:sembast/sembast_memory.dart';
+import 'package:ten_ants/data/attachment_storage.dart';
 import 'package:ten_ants/models/models.dart';
 import 'package:ten_ants/services/auth_service.dart';
 import 'package:ten_ants/services/data_store.dart';
@@ -9,12 +12,14 @@ void main() {
   late Database db;
   late AuthService auth;
   late DataStore store;
+  late MemoryAttachmentStorage files;
   var dbCounter = 0;
 
   setUp(() async {
     db = await databaseFactoryMemory.openDatabase('test-${dbCounter++}.db');
-    auth = AuthService(db, hasher: PasswordHasher(iterations: 10));
-    store = DataStore(db, auth, clock: () => DateTime(2026, 9, 10));
+    files = MemoryAttachmentStorage();
+    auth = AuthService(db, hasher: PasswordHasher(iterations: 10), files: files);
+    store = DataStore(db, auth, clock: () => DateTime(2026, 9, 10), files: files);
   });
 
   tearDown(() async {
@@ -197,6 +202,95 @@ void main() {
       expect(store.debtOf(mehmet), 18500);
       expect(store.debtOf(ayse), 0);
       expect(store.overdue, isNotEmpty);
+    });
+
+    group('belgeler', () {
+      Attachment att(String id, {String name = 'fis.jpg', int size = 3}) =>
+          Attachment(id: id, name: name, mimeType: Attachment.mimeFor(name)!, size: size);
+      final bytes = Uint8List.fromList([1, 2, 3]);
+
+      test('MIME türü uzantıdan belirlenir', () {
+        expect(Attachment.mimeFor('Fatura.PDF'), 'application/pdf');
+        expect(Attachment.mimeFor('a.jpeg'), 'image/jpeg');
+        expect(Attachment.mimeFor('a.docx'), isNull);
+        expect(Attachment.mimeFor('dosyaadi'), isNull);
+      });
+
+      test('ek kaydedilir, okunur; kayıttan çıkarılınca dosyası silinir', () async {
+        final (p, _) = await seed();
+        final t = await store.saveTxn(
+          Txn(
+            userId: store.userId,
+            propertyId: p.id,
+            type: TxType.expense,
+            category: 'Tamir & Bakım',
+            amount: 1200,
+            date: DateTime(2026, 9, 1),
+            attachments: [att('a1'), att('a2', name: 'fatura.pdf')],
+          ),
+          newFiles: {'a1': bytes, 'a2': bytes},
+        );
+        final loaded = store.transactions.single;
+        expect(loaded.attachments.map((a) => a.id), ['a1', 'a2']);
+        expect(loaded.attachments[1].isPdf, isTrue);
+        expect(await store.readAttachment(loaded.attachments.first), bytes);
+
+        // a1 çıkarıldı → dosyası silinir, a2 kalır.
+        await store.saveTxn(Txn(
+          id: t.id,
+          userId: store.userId,
+          propertyId: p.id,
+          type: TxType.expense,
+          category: 'Tamir & Bakım',
+          amount: 1200,
+          date: DateTime(2026, 9, 1),
+          attachments: [att('a2', name: 'fatura.pdf')],
+        ));
+        expect(files.files.keys, ['a2']);
+
+        await store.deleteTxn(t.id!);
+        expect(files.files, isEmpty);
+      });
+
+      test('kira ödemesine dekont eklenebilir; mülk silinince dosyalar da silinir', () async {
+        final (p, t) = await seed();
+        await store.recordRentPayment(
+          tenant: t,
+          period: '2026-07',
+          amount: 15000,
+          attachments: [att('d1', name: 'dekont.pdf')],
+          newFiles: {'d1': bytes},
+        );
+        expect(store.transactions.single.attachments.single.name, 'dekont.pdf');
+        await store.deleteProperty(p.id!);
+        expect(files.files, isEmpty);
+      });
+
+      test('hesap silinince dosyalar da silinir', () async {
+        final (_, t) = await seed();
+        await store.recordRentPayment(
+            tenant: t, period: '2026-07', amount: 15000,
+            attachments: [att('d1')], newFiles: {'d1': bytes});
+        await auth.deleteAccount('karinca1');
+        expect(files.files, isEmpty);
+      });
+
+      test('sınırlar: en fazla 5 belge, her biri 10 MB', () async {
+        final (p, _) = await seed();
+        Txn tx(List<Attachment> a) => Txn(
+              userId: store.userId,
+              propertyId: p.id,
+              type: TxType.expense,
+              category: 'Aidat',
+              amount: 1,
+              date: DateTime(2026),
+              attachments: a,
+            );
+        expect(() => store.saveTxn(tx([for (var i = 0; i < 6; i++) att('x$i')])),
+            throwsArgumentError);
+        expect(() => store.saveTxn(tx([att('big', size: Attachment.maxBytes + 1)])),
+            throwsArgumentError);
+      });
     });
 
     test('geçersiz veri reddedilir', () async {

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Fiş, fatura veya dekont fotoğrafı çekip gelir/gider kaydına eklemek için kamerayı kullanır.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galeriden fiş, fatura veya dekont fotoğrafı seçip gelir/gider kaydına eklemek için kullanılır.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

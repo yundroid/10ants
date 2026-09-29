@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../services/data_store.dart';
 import '../services/reports.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../widgets/attachments.dart';
 import '../widgets/common.dart';
 import 'home_shell.dart';
 
@@ -185,7 +187,25 @@ class TxnTile extends StatelessWidget {
         backgroundColor: c.withValues(alpha: 0.14),
         child: Icon(income ? Icons.south_west : Icons.north_east, color: c, size: 20),
       ),
-      title: Text(txn.category, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Row(children: [
+        Flexible(
+          child: Text(txn.category,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis),
+        ),
+        if (txn.attachments.isNotEmpty) ...[
+          const SizedBox(width: 6),
+          Tooltip(
+            message: '${txn.attachments.length} belge',
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.attach_file, size: 15, color: Theme.of(context).colorScheme.outline),
+              if (txn.attachments.length > 1)
+                Text('${txn.attachments.length}',
+                    style: Theme.of(context).textTheme.labelSmall),
+            ]),
+          ),
+        ],
+      ]),
       subtitle: Text(parts.join(' · '), maxLines: 2, overflow: TextOverflow.ellipsis),
       trailing: SignedAmount(txn.amount, income: income),
       onTap: () => openTxnForm(context, txn: txn),
@@ -221,6 +241,8 @@ class _TxnFormScreenState extends State<TxnFormScreen> {
   late DateTime _date = x?.date ?? dateOnly(DateTime.now());
   late final _amount = TextEditingController(text: x == null ? '' : amountInput(x!.amount));
   late final _desc = TextEditingController(text: x?.description);
+  late final List<Attachment> _attachments = [...?x?.attachments];
+  final Map<String, Uint8List> _newFiles = {};
   bool _busy = false;
 
   bool get _isRent => _type == TxType.income && _category == TxCategories.rent;
@@ -248,7 +270,8 @@ class _TxnFormScreenState extends State<TxnFormScreen> {
         date: _date,
         period: _isRent ? (_period ?? periodKey(_date)) : null,
         description: _desc.text.trim(),
-      ));
+        attachments: List.of(_attachments),
+      ), newFiles: Map.of(_newFiles));
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) showSnack(context, errorText(e), error: true);
@@ -356,6 +379,18 @@ class _TxnFormScreenState extends State<TxnFormScreen> {
             controller: _desc,
             maxLines: 2,
             decoration: const InputDecoration(labelText: 'Açıklama'),
+          ),
+          AttachmentsField(
+            attachments: _attachments,
+            pendingBytes: _newFiles,
+            onAdd: (f) => setState(() {
+              _attachments.add(f.attachment);
+              _newFiles[f.attachment.id] = f.bytes;
+            }),
+            onRemove: (a) => setState(() {
+              _attachments.removeWhere((e) => e.id == a.id);
+              _newFiles.remove(a.id);
+            }),
           ),
           FilledButton(onPressed: _busy ? null : _save, child: const Text('Kaydet')),
         ],

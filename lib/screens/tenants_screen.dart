@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../services/data_store.dart';
 import '../services/rent_calculator.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../widgets/attachments.dart';
 import '../widgets/common.dart';
 import 'home_shell.dart';
 import 'properties_screen.dart';
@@ -278,7 +280,7 @@ class TenantDetailScreen extends StatelessWidget {
             ]),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Row(children: [
           Expanded(
             child: StatCard(
@@ -288,7 +290,7 @@ class TenantDetailScreen extends StatelessWidget {
               color: debt > 0 ? AntColors.expense(context) : AntColors.income(context),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: StatCard(
               label: 'Toplam ödenen',
@@ -350,6 +352,8 @@ Future<void> showPaymentDialog(
   final noteCtl = TextEditingController();
   var date = store.today;
   final form = GlobalKey<FormState>();
+  final attachments = <Attachment>[];
+  final newFiles = <String, Uint8List>{};
 
   await showDialog<void>(
     context: context,
@@ -390,6 +394,19 @@ Future<void> showPaymentDialog(
                   controller: noteCtl,
                   decoration: const InputDecoration(labelText: 'Not (isteğe bağlı)'),
                 ),
+                const SizedBox(height: 12),
+                AttachmentsField(
+                  attachments: attachments,
+                  pendingBytes: newFiles,
+                  onAdd: (f) => setState(() {
+                    attachments.add(f.attachment);
+                    newFiles[f.attachment.id] = f.bytes;
+                  }),
+                  onRemove: (a) => setState(() {
+                    attachments.removeWhere((e) => e.id == a.id);
+                    newFiles.remove(a.id);
+                  }),
+                ),
               ]),
             ),
           ),
@@ -406,6 +423,8 @@ Future<void> showPaymentDialog(
                   amount: parseAmount(amountCtl.text)!,
                   date: date,
                   description: noteCtl.text.trim(),
+                  attachments: attachments,
+                  newFiles: newFiles,
                 );
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (context.mounted) showSnack(context, 'Ödeme kaydedildi');

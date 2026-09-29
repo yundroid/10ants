@@ -66,4 +66,9 @@ void main() {
     expect(fmtPeriod('2026-03'), 'Mart 2026');
     expect(money(1234.5), contains('1.234,50'));
   });
+
+  test('Türkçe büyük harf', () {
+    expect(trUpper('Aktif kiracı'), 'AKTİF KİRACI');
+    expect(trUpper('Bu ay gelir'), 'BU AY GELİR');
+  });
 }

@@ -208,6 +208,52 @@ class TxCategories {
   static List<String> of(TxType t) => t == TxType.income ? income : expense;
 }
 
+/// Bir gelir/gider kaydına eklenmiş belge (fiş, fatura, dekont fotoğrafı
+/// veya PDF). Dosyanın kendisi [AttachmentStorage]'da [id] ile tutulur.
+class Attachment {
+  const Attachment({
+    required this.id,
+    required this.name,
+    required this.mimeType,
+    required this.size,
+  });
+
+  final String id;
+  final String name;
+  final String mimeType;
+  final int size;
+
+  bool get isImage => mimeType.startsWith('image/');
+  bool get isPdf => mimeType == 'application/pdf';
+
+  factory Attachment.fromMap(Map<String, Object?> m) => Attachment(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        mimeType: m['mimeType'] as String,
+        size: m['size'] as int,
+      );
+
+  Map<String, Object?> toMap() => {'id': id, 'name': name, 'mimeType': mimeType, 'size': size};
+
+  static const maxBytes = 10 * 1024 * 1024;
+  static const maxPerTxn = 5;
+  static const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf'];
+
+  /// Uzantıya göre MIME türü; desteklenmeyen türde `null`.
+  static String? mimeFor(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    final ext = dot < 0 ? '' : fileName.substring(dot + 1).toLowerCase();
+    return switch (ext) {
+      'jpg' || 'jpeg' => 'image/jpeg',
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'heic' => 'image/heic',
+      'pdf' => 'application/pdf',
+      _ => null,
+    };
+  }
+}
+
 /// Gelir veya gider kaydı. Kira ödemeleri `category == 'Kira'`, bir
 /// [tenantId] ve ilgili [period] (`yyyy-MM`) ile tutulur.
 class Txn {
@@ -233,7 +279,10 @@ class Txn {
     required this.date,
     this.period,
     this.description = '',
+    this.attachments = const [],
   });
+
+  final List<Attachment> attachments;
 
   bool get isRentPayment =>
       type == TxType.income && category == TxCategories.rent && tenantId != null;
@@ -249,6 +298,10 @@ class Txn {
         date: parseDate(m['date'] as String),
         period: m['period'] as String?,
         description: (m['description'] as String?) ?? '',
+        attachments: [
+          for (final a in (m['attachments'] as List?) ?? const [])
+            Attachment.fromMap((a as Map).cast<String, Object?>()),
+        ],
       );
 
   Map<String, Object?> toMap() => {
@@ -261,6 +314,7 @@ class Txn {
         'date': dateKey(date),
         'period': period,
         'description': description,
+        'attachments': [for (final a in attachments) a.toMap()],
       };
 
   Txn copyWith({int? id}) => Txn(
@@ -274,5 +328,6 @@ class Txn {
         date: date,
         period: period,
         description: description,
+        attachments: attachments,
       );
 }

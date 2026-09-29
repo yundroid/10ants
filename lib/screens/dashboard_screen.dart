@@ -32,7 +32,7 @@ class DashboardScreen extends StatelessWidget {
 
     Widget grid(List<Widget> cards) => LayoutBuilder(builder: (context, c) {
           final cols = c.maxWidth > 640 ? 4 : 2;
-          const gap = 12.0;
+          const gap = 8.0;
           final w = (c.maxWidth - gap * (cols - 1)) / cols;
           return Wrap(
             spacing: gap,
@@ -95,7 +95,7 @@ class DashboardScreen extends StatelessWidget {
                   StatCard(
                     label: 'Bu ay net',
                     value: money(month.net),
-                    icon: Icons.savings_outlined,
+                    icon: Icons.account_balance_wallet_outlined,
                     caption: '${today.year} net: ${money(year.net)}',
                   ),
                   StatCard(
@@ -108,7 +108,7 @@ class DashboardScreen extends StatelessWidget {
                         .push(MaterialPageRoute(builder: (_) => const OverdueScreen())),
                   ),
                 ]),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 grid([
                   StatCard(
                     label: 'Mülk',

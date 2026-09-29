@@ -48,3 +48,6 @@ double? parseAmount(String input) {
 
 String amountInput(double v) =>
     v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2).replaceAll('.', ',');
+
+/// Türkçe kurallarıyla büyük harf: "kira" → "KİRA", "ılık" → "ILIK".
+String trUpper(String s) => s.replaceAll('i', 'İ').replaceAll('ı', 'I').toUpperCase();

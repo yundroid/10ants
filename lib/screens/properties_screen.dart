@@ -224,19 +224,19 @@ class PropertyDetailScreen extends StatelessWidget {
             ].join('\n').ifEmpty('Adres girilmemiş')),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Row(children: [
           Expanded(
               child: StatCard(
                   label: '${store.today.year} net',
                   value: money(thisYear.net),
-                  icon: Icons.savings_outlined)),
-          const SizedBox(width: 12),
+                  icon: Icons.account_balance_wallet_outlined)),
+          const SizedBox(width: 8),
           Expanded(
               child: StatCard(
                   label: 'Toplam net',
                   value: money(allTime.net),
-                  icon: Icons.account_balance_wallet_outlined,
+                  icon: Icons.account_balance_outlined,
                   caption: 'Gelir ${money(allTime.income)}')),
         ]),
         SectionTitle('Kiracılar',

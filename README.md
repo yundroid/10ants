@@ -30,6 +30,8 @@ Ev ve daire sahiplerinin mülklerini, kiracılarını, gelir-giderlerini ve geci
 
 **Gelir & gider** — kira, depozito, aidat, tamir-bakım, emlak vergisi, DASK-sigorta, fatura, kredi taksiti vb. Ay/mülk/tür filtresi. Mülkten bağımsız "genel" giderler.
 
+**Belgeler** — her gelir/gider kaydına ve kira tahsilatına fiş, fatura veya dekont eklenebilir: kamerayla fotoğraf çekme ya da dosyadan fotoğraf (JPG, PNG, WEBP, HEIC) / PDF seçme. Kayıt başına en fazla 5 belge, her biri en fazla 10 MB. Fotoğraflar uygulama içinde yakınlaştırılarak, PDF'ler cihazın PDF görüntüleyicisinde açılır.
+
 **Raporlar** — yıllık gelir, gider, net kazanç ve kâr marjı; aylık gelir-gider grafiği; **mülk bazında kazanç** sıralaması (en kârlı mülk 🏆); kategori dağılımı.
 
 **Özet paneli** — bu ayın gelir/gider/neti, geciken kira toplamı, doluluk oranı, bu ay beklenen ödemeler, son 6 ay grafiği.

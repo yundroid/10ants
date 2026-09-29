@@ -69,7 +69,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         StatCard(
           label: 'Net kazanç',
           value: money(totals.net),
-          icon: Icons.savings_outlined,
+          icon: Icons.account_balance_wallet_outlined,
           caption: margin == null ? null : 'Kâr marjı %${margin.toStringAsFixed(1).replaceAll('.', ',')}',
         ),
         const SectionTitle('Aylık gelir & gider'),

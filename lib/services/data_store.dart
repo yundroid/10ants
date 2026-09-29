@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:sembast/sembast.dart';
 
+import '../data/attachment_storage.dart';
 import '../data/stores.dart';
 import '../models/models.dart';
 import '../utils/format.dart';
@@ -13,8 +14,9 @@ import 'rent_calculator.dart';
 /// çıkış yapılınca temizler. Tüm sorgular kullanıcının kendi kayıtlarıyla
 /// sınırlıdır.
 class DataStore extends ChangeNotifier {
-  DataStore(this._db, this._auth, {DateTime Function()? clock})
-      : _clock = clock ?? DateTime.now {
+  DataStore(this._db, this._auth, {DateTime Function()? clock, AttachmentStorage? files})
+      : _clock = clock ?? DateTime.now,
+        files = files ?? MemoryAttachmentStorage() {
     _auth.addListener(_onAuthChanged);
     _onAuthChanged();
   }
@@ -22,6 +24,9 @@ class DataStore extends ChangeNotifier {
   final Database _db;
   final AuthService _auth;
   final DateTime Function() _clock;
+
+  /// Gelir/gider eklerinin (fotoğraf, PDF) saklandığı yer.
+  final AttachmentStorage files;
 
   int? _userId;
   bool _loading = false;
@@ -128,19 +133,22 @@ class DataStore extends ChangeNotifier {
   /// Mülkü, kiracılarını ve mülke ait tüm hareketleri siler.
   Future<void> deleteProperty(int id) async {
     await _requireOwned(Stores.properties, id);
-    await _db.transaction((txn) async {
+    final orphaned = await _db.transaction((txn) async {
       final tenantIds = (await Stores.tenants.findKeys(txn,
               finder: Finder(filter: Filter.equals('propertyId', id))))
           .toList();
-      await Stores.transactions.delete(txn,
-          finder: Finder(
-              filter: Filter.or([
-            Filter.equals('propertyId', id),
-            if (tenantIds.isNotEmpty) Filter.inList('tenantId', tenantIds),
-          ])));
+      final finder = Finder(
+          filter: Filter.or([
+        Filter.equals('propertyId', id),
+        if (tenantIds.isNotEmpty) Filter.inList('tenantId', tenantIds),
+      ]));
+      final ids = attachmentIdsOf(await Stores.transactions.find(txn, finder: finder));
+      await Stores.transactions.delete(txn, finder: finder);
       await Stores.tenants.records(tenantIds).delete(txn);
       await Stores.properties.record(id).delete(txn);
+      return ids;
     });
+    await files.deleteAll(orphaned);
     await reload();
   }
 
@@ -189,23 +197,52 @@ class DataStore extends ChangeNotifier {
 
   // -------------------------------------------------------------- Hareketler
 
-  Future<Txn> saveTxn(Txn t) async {
+  /// Hareketi kaydeder. [newFiles], [Txn.attachments] içindeki yeni eklerin
+  /// baytlarıdır (ek kimliği → bayt). Kayıttan çıkarılan eklerin dosyaları
+  /// silinir.
+  Future<Txn> saveTxn(Txn t, {Map<String, Uint8List> newFiles = const {}}) async {
     _assertOwned(t.userId);
     if (t.amount <= 0) throw ArgumentError('Tutar sıfırdan büyük olmalı');
+    if (t.attachments.length > Attachment.maxPerTxn) {
+      throw ArgumentError('Bir kayda en fazla ${Attachment.maxPerTxn} belge eklenebilir');
+    }
+    for (final a in t.attachments) {
+      if (a.size > Attachment.maxBytes) throw ArgumentError('"${a.name}" 10 MB\'tan büyük');
+    }
     if (t.propertyId != null) await _requireOwned(Stores.properties, t.propertyId!);
     if (t.tenantId != null) await _requireOwned(Stores.tenants, t.tenantId!);
+
+    for (final e in newFiles.entries) {
+      await files.write(e.key, e.value);
+    }
     Txn saved;
+    var removed = <String>[];
     if (t.id == null) {
       final id = await Stores.transactions.add(_db, t.toMap());
       saved = t.copyWith(id: id);
     } else {
-      await _requireOwned(Stores.transactions, t.id!);
+      final old = await _requireOwned(Stores.transactions, t.id!);
+      final keep = {for (final a in t.attachments) a.id};
+      removed = [
+        for (final a in Txn.fromMap(t.id!, old).attachments)
+          if (!keep.contains(a.id)) a.id,
+      ];
       await Stores.transactions.record(t.id!).put(_db, t.toMap());
       saved = t;
     }
+    await files.deleteAll(removed);
     await reload();
     return saved;
   }
+
+  Future<Uint8List?> readAttachment(Attachment a) => files.read(a.id);
+
+  static List<String> attachmentIdsOf(
+          Iterable<RecordSnapshot<int, Map<String, Object?>>> records) =>
+      [
+        for (final r in records)
+          for (final a in Txn.fromMap(r.key, r.value).attachments) a.id,
+      ];
 
   /// Kiracı için kira tahsilatı kaydeder.
   Future<Txn> recordRentPayment({
@@ -214,6 +251,8 @@ class DataStore extends ChangeNotifier {
     required double amount,
     DateTime? date,
     String description = '',
+    List<Attachment> attachments = const [],
+    Map<String, Uint8List> newFiles = const {},
   }) =>
       saveTxn(Txn(
         userId: _uid,
@@ -225,11 +264,13 @@ class DataStore extends ChangeNotifier {
         date: date ?? today,
         period: period,
         description: description,
-      ));
+        attachments: attachments,
+      ), newFiles: newFiles);
 
   Future<void> deleteTxn(int id) async {
-    await _requireOwned(Stores.transactions, id);
+    final rec = await _requireOwned(Stores.transactions, id);
     await Stores.transactions.record(id).delete(_db);
+    await files.deleteAll(Txn.fromMap(id, rec).attachments.map((a) => a.id));
     await reload();
   }
 
@@ -300,11 +341,13 @@ class DataStore extends ChangeNotifier {
     if (userId != _uid) throw StateError('Bu kayıt size ait değil');
   }
 
-  Future<void> _requireOwned(StoreRef<int, Map<String, Object?>> store, int id) async {
+  Future<Map<String, Object?>> _requireOwned(
+      StoreRef<int, Map<String, Object?>> store, int id) async {
     final rec = await store.record(id).get(_db);
     if (rec == null || rec['userId'] != _uid) {
       throw StateError('Kayıt bulunamadı');
     }
+    return rec;
   }
 
   @override

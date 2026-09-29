@@ -5,6 +5,12 @@ import '../theme.dart';
 import '../utils/format.dart';
 import 'ant_art.dart';
 
+/// Özet kartı. Metinler üç katmanla ayrışır:
+/// - **başlık**: küçük, soluk, harf aralıklı (ne ölçüldüğü)
+/// - **değer**: büyük, kalın, anlam rengiyle (asıl bilgi)
+/// - **açıklama**: renkli hap içinde (ek bağlam)
+/// Soldaki renkli şerit kartın anlamını (gelir/gider/uyarı) bir bakışta
+/// gösterir.
 class StatCard extends StatelessWidget {
   const StatCard({
     super.key,
@@ -25,45 +31,71 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? Theme.of(context).colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
+    final c = color ?? cs.primary;
     final tt = Theme.of(context).textTheme;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: c.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, size: 18, color: c),
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(width: 4, color: c),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(children: [
+                      Expanded(
+                        child: Text(
+                          trUpper(label),
+                          style: tt.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(icon, size: 18, color: c),
+                    ]),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(value,
+                          style: tt.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800, color: c, height: 1.15)),
+                    ),
+                    if (caption != null) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: c.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          caption!,
+                          style: tt.labelSmall?.copyWith(
+                            color: cs.onSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(label,
-                      style: tt.labelLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-              ]),
-              const SizedBox(height: 10),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(value,
-                    style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: c)),
               ),
-              if (caption != null) ...[
-                const SizedBox(height: 2),
-                Text(caption!, style: tt.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-            ],
-          ),
+            ),
+          ]),
         ),
       ),
     );
@@ -121,7 +153,7 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
+        padding: const EdgeInsets.fromLTRB(4, 16, 4, 6),
         child: Row(children: [
           Expanded(
             child: Text(title,
