@@ -55,6 +55,20 @@ flutter build ios --release
 flutter build web --release
 ```
 
+## GitHub Actions ile APK
+
+Her push ve pull request'te [`android-apk.yml`](.github/workflows/android-apk.yml) iş akışı çalışır: analiz ve testler geçerse **debug** ve **release** APK derlenir.
+
+1. GitHub'da depoda **Actions** sekmesine gidin → **Android APK** → en son çalıştırmayı açın.
+2. Sayfanın altındaki **Artifacts** bölümünden `10ants-debug-apk` veya `10ants-release-apk` dosyasını indirin (zip içinde APK bulunur; 30 gün saklanır).
+3. Elle çalıştırmak için: Actions → Android APK → **Run workflow**.
+4. `v1.0.0` gibi bir etiket gönderirseniz APK'lar otomatik olarak bir **GitHub Release**'e eklenir:
+   ```bash
+   git tag v1.0.0 && git push origin v1.0.0
+   ```
+
+> Release APK şimdilik debug anahtarıyla imzalanır; telefona yüklenebilir ama Google Play'e yüklemek için kendi imza anahtarınız gerekir.
+
 ## Mimari
 
 ```

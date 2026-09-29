@@ -1,0 +1,83 @@
+name: Android APK
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # etiketlerde GitHub Release oluşturmak için
+
+jobs:
+  build:
+    name: Test ve APK derle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Flutter kur
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.5
+          cache: true
+
+      - name: Bağımlılıkları indir
+        run: flutter pub get
+
+      - name: Kod analizi
+        run: flutter analyze
+
+      - name: Testler
+        run: flutter test
+
+      - name: Debug APK derle
+        run: flutter build apk --debug
+
+      - name: Release APK derle
+        run: flutter build apk --release
+
+      - name: Dosya adlarını düzenle
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          SHA=${GITHUB_SHA::7}
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-debug.apk   "dist/10ants-${VERSION}-${SHA}-debug.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/10ants-${VERSION}-${SHA}-release.apk"
+          ls -lh dist
+
+      - name: Debug APK'yı yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: 10ants-debug-apk
+          path: dist/*-debug.apk
+          retention-days: 30
+
+      - name: Release APK'yı yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: 10ants-release-apk
+          path: dist/*-release.apk
+          retention-days: 30
+
+      - name: GitHub Release oluştur (v* etiketleri)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk
+          generate_release_notes: true
